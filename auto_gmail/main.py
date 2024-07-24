@@ -190,12 +190,12 @@ def save_output(output):
 
 def main():
     global process, cmd_process
-    '''if len(sys.argv) < 2:
+    if len(sys.argv) < 2:
         sys.exit(1)
 
     json_arg = sys.argv[1]
     with open(OUTPUT_FILE, "w") as file:
-        file.write(json_arg)'''
+        file.write(json_arg)
 
     try:
         with open(OUTPUT_FILE, "r") as file:
