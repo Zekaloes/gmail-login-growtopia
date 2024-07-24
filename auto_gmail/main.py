@@ -267,8 +267,8 @@ def main():
     screen_width = screen.width
     screen_height = screen.height
 
-    width = screen_width/3
-    height = screen_height/3
+    width = 1024
+    height = 760
     driver.set_window_size(width, height)
 
     random_x = random.randint(0, screen_width - width)
