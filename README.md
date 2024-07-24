@@ -40,16 +40,17 @@ import / export farms from txt
 ---------------------
 ---------------------
 If U need script to load bulk farm, u can use this script, [ OPEN SOURCE ]
+```
 local rotation = getBot().rotation
 
-```
 local file, err = io.open('farms.txt', "r")
 world_manager = getWorldManager()
 if file then
     for line in file:lines() do
         world_manager:addFarm(line)
     end
-end```
+end
+```
 
 
 make sure u have txt file named farms in ur lucifer folder, with format farm:ids:blockids 
