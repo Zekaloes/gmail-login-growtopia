@@ -30,22 +30,32 @@ Dont use any lucifer feature that make it open explorer.exe ( the built in file 
 It Will Make gmail.exe won't work ( LUCIFER ISSUE ), i tried to report to nuron about this, no response
 
 Example of lucifer feature that open explorer.exe :
+
 load or save current lucifer config
+
 import / export proxy from txt 
+
 import / export farms from txt 
+
 ---------------------
 ---------------------
 If U need script to load bulk farm, u can use this script, [ OPEN SOURCE ]
 local rotation = getBot().rotation
+
 local file, err = io.open('farms.txt', "r")
+
 world_manager = getWorldManager()
 
-
 if file then 
+
     for line in file:lines() do
+    
         world_manager:addFarm(line)
+        
     end
+    
 end
+
 
 make sure u have txt file named farms in ur lucifer folder, with format farm:ids:blockids 
 --------------
