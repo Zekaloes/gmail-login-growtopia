@@ -17,7 +17,6 @@ How to Make It Support G Suite Email (myemail@domain.com):
 Done! The setup is complete.
 Not Trusting gmail.exe?
 You can decompile gmail.exe if u have some coding experiences; it’s not even obfuscated. or you can buy the source code for gmail.exe. 
-Groya — Yesterday at 4:07 PM
 ---------------------
 ---------------------
 [WARNING] 
@@ -30,7 +29,6 @@ import / export proxy from txt
 import / export farms from txt 
 ---------------------
 ---------------------
-Groya — Yesterday at 4:14 PM
 If U need script to load bulk farm, u can use this script, [ OPEN SOURCE ]
 local rotation = getBot().rotation
 local file, err = io.open('farms.txt', "r")
@@ -45,5 +43,4 @@ end
 
 make sure u have txt file named farms in ur lucifer folder, with format farm:ids:blockids 
 --------------
-Groya — Yesterday at 4:14 PM
 or if u need any other script that need to added in bulk like adding bunch proxies, bunch of plant world. u can dm me, ill make it for free [ OPEN SOURCE ] 
