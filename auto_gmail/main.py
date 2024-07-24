@@ -8,6 +8,7 @@ import sys
 import json
 import time
 
+import pygetwindow as gw
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -15,11 +16,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
+
 STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
 OUTPUT_FILE = "autologin_tools/data.txt"
 PROXY_SUPPORT_PATH = "autologin_tools/ProxySupport/ProxySupport.exe"
 EXTENSION_PATH = os.path.abspath("autologin_tools/extension")
+global driver
 
 OUTPUT = {
     "status": STATUS_SUCCESS,
@@ -180,6 +184,9 @@ def save_output(output):
         output_json = json.dumps(output)
         file.write(output_json)
     print(output_json)
+    driver.close()
+    cmd_process.terminate()
+    driver.quit()
 
 def main():
     global process, cmd_process
@@ -255,6 +262,19 @@ def main():
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
     driver = uc.Chrome(options=chrome_options)
+
+    screen = gw.getWindowsWithTitle('')[0]
+    screen_width = screen.width
+    screen_height = screen.height
+
+    width = screen_width/3
+    height = screen_height/3
+    driver.set_window_size(width, height)
+
+    random_x = random.randint(0, screen_width - width)
+    random_y = random.randint(0, screen_height - height)
+    driver.set_window_position(random_x, random_y)
+
 
     try:
         time.sleep(2)
