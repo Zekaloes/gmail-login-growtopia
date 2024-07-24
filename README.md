@@ -16,7 +16,7 @@ Now, when you add a Gmail bot, it will automatically open a browser and log in t
 --------------------------
 How to Make It Support G Suite Email (myemail@domain.com):
 
-1.Create a text file named email.txt and import all your emails|passwords in the format shown in the image below.
+1.Create a text file named email.txt to folder autologin_tools and import all your emails|passwords in the format shown in the image below.
 
 2.When you add a Lucifer bot, make sure to change the @domain to @gmail. For example, change myname@dighc.com to myname@gmail.com (DO NOT change the one in email.txt).
 
