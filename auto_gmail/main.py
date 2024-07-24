@@ -44,20 +44,20 @@ def has_target_url_changed(driver):
             return True
     return False
 
-def generate_random_username(length=8):
-    """Generate a random username with a mix of consonants, vowels, and digits."""
+def generate_username(length=8):
+
     vowels = "aeiou"
     consonants = "".join(set(string.ascii_lowercase) - set(vowels))
-    digits = string.digits
 
-    def generate_segment():
-        segment_length = random.randint(2, 4)
-        return ''.join(random.choice(consonants) + random.choice(vowels) for _ in range(segment_length))
+    first_char = random.choice(string.ascii_uppercase)
+    remaining_chars = []
+    for i in range(length - 1):
+        if i % 2 == 0:
+            remaining_chars.append(random.choice(consonants))
+        else:
+            remaining_chars.append(random.choice(vowels))
 
-    username = ''.join(generate_segment() for _ in range(length // 2))
-    username += ''.join(random.choice(digits) for _ in range(length - len(username)))
-    username = ''.join(random.sample(username, len(username)))
-
+    username = first_char + ''.join(remaining_chars)
     return username
 
 def solve_captcha(driver):
@@ -86,29 +86,46 @@ def solve_captcha(driver):
 
 def handle_target_urls(driver):
     """Handle different target URLs and perform respective actions."""
+    time.sleep(2)
     if 'accounts.google.com/signin/oauth/id?authuser' in driver.current_url:
         WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.XPATH, '//*[@id="yDmH0d"]/c-wiz/div/div[3]/div/div/div[2]/div/div/button/span'))
         ).click()
+    elif 'accounts.google.com/speedbump' in driver.current_url:
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="confirm"]'))
+        ).click()
+        try:
+            WebDriverWait(driver, 10).until(has_target_url_changed)
+        except Exception:
+            pass
+
+        time.sleep(8)
     elif 'accounts.google.com/v3/signin/challenge/recaptcha' in driver.current_url:
         solve_captcha(driver)
         time.sleep(5)
     elif 'login.growtopiagame.com/player/growid/logon-name' in driver.current_url:
         time.sleep(4)
         try:
-            token_pattern = r'"token":"(.*?)"'
-            match = re.search(token_pattern, driver.page_source)
-            if match:
-                token = match.group(1)
-                OUTPUT['token'] = token
-                save_output(OUTPUT)
+            if not ('Choose your name in Growtopia' in driver.page_source):
+                token_pattern = r'"token":"(.*?)"'
+                match = re.search(token_pattern, driver.page_source)
+                if match:
+                    token = match.group(1)
+                    OUTPUT['token'] = token
+                    save_output(OUTPUT)
+                else:
+                    OUTPUT['status'] = STATUS_FAILED
+                    save_output(OUTPUT)
             else:
-                OUTPUT['status'] = STATUS_FAILED
-                save_output(OUTPUT)
+                generate_and_enter_username(driver)
+                wait_for_token(driver)
         except Exception as e:
             generate_and_enter_username(driver)
             wait_for_token(driver)
     else:
+        
         retry_page_loading(driver)
 
 def retry_page_loading(driver):
@@ -135,20 +152,23 @@ def retry_page_loading(driver):
 def generate_and_enter_username(driver):
     """Generate a new username and enter it in the login form."""
     while True:
-        username = generate_random_username()
-        time.sleep(10)
+        username = generate_username()
+        time.sleep(6)
         elements = driver.find_elements(By.XPATH, '//*[@id="modalShow"]/div/div/div/div/section/div/div[2]/ul/li')
+
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="login-name"]'))
+        ).send_keys(username)
+
+        WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="modalShow"]/div/div/div/div/section/div/div[2]/div/form/div[2]/input'))
+        ).click()
+        time.sleep(5)
 
         found_message = any(element.text == 'What kind of name is that? Kids play this too, ya know.' for element in elements)
 
         if not found_message:
-            WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="login-name"]'))
-            ).send_keys(username)
-            WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="modalShow"]/div/div/div/div/section/div/div[2]/div/form/div[2]/input'))
-            ).click()
-            time.sleep(5)
             break
 
 def wait_for_token(driver):
@@ -198,12 +218,12 @@ def save_debug(output):
 def main():
     global process, cmd_process
     try:
-        if len(sys.argv) < 2:
+        '''if len(sys.argv) < 2:
             sys.exit(1)
 
         json_arg = sys.argv[1]
         with open(OUTPUT_FILE, "w") as file:
-            file.write(json_arg)
+            file.write(json_arg)'''
 
         try:
             with open(OUTPUT_FILE, "r") as file:
