@@ -20,7 +20,7 @@ STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
 OUTPUT_FILE = "autologin_tools/data.txt"
 PROXY_SUPPORT_PATH = "autologin_tools/ProxySupport/ProxySupport.exe"
-EXTENSION_PATH = "autologin_tools/extension"
+EXTENSION_PATH = os.path.abspath("autologin_tools/extension")
 
 OUTPUT = {
     "status": STATUS_SUCCESS,
@@ -190,12 +190,12 @@ def save_output(output):
 
 def main():
     global process, cmd_process
-    if len(sys.argv) < 2:
+    '''if len(sys.argv) < 2:
         sys.exit(1)
 
     json_arg = sys.argv[1]
     with open(OUTPUT_FILE, "w") as file:
-        file.write(json_arg)
+        file.write(json_arg)'''
 
     try:
         with open(OUTPUT_FILE, "r") as file:
@@ -256,7 +256,7 @@ def main():
                                            stderr=subprocess.PIPE, shell=True)
             chrome_options.add_argument(f"--proxy-server=socks5://127.0.0.1:{local_port}")
 
-    if os.path.exists(os.path.abspath(EXTENSION_PATH)):
+    if os.path.exists(EXTENSION_PATH):
         chrome_options.add_argument(f"--load-extension={EXTENSION_PATH}")
 
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
