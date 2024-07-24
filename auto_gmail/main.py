@@ -192,17 +192,17 @@ def save_output(output):
 def save_debug(output):
     """Save the debug errors to the specified file."""
     with open(DEBUG_FILE, "w") as file:
-        file.write(output)
+        file.write(str(output))
 
 def main():
     global process, cmd_process
     try:
-        if len(sys.argv) < 2:
+        '''if len(sys.argv) < 2:
             sys.exit(1)
 
         json_arg = sys.argv[1]
         with open(OUTPUT_FILE, "w") as file:
-            file.write(json_arg)
+            file.write(json_arg)'''
 
         try:
             with open(OUTPUT_FILE, "r") as file:
@@ -272,6 +272,7 @@ def main():
 
     except Exception as e:
         save_debug(e)
+        sys.exit(1)
 
     try:
         time.sleep(2)
