@@ -15,6 +15,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
@@ -268,7 +269,9 @@ def main():
 
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
-        driver = uc.Chrome(options=chrome_options)
+        driver = uc.Chrome(options=chrome_options, driver_executable_path=ChromeDriverManager().install())
+
+        time.sleep(111111111)
 
     except Exception as e:
         save_debug(e)
