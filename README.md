@@ -1,3 +1,8 @@
+[WARNING]
+the proxysupport.exe is from https://github.com/ginuerzh/gost so its not a virus and its safe
+
+-------
+
 How to Use:
 
 1.Download both the folder and gmail.exe.
@@ -17,7 +22,7 @@ How to Make It Support G Suite Email (myemail@domain.com):
 
 Done! The setup is complete.
 Not Trusting gmail.exe?
-You can decompile gmail.exe if u have some coding experiences; it’s not even obfuscated. or you can buy the source code for gmail.exe. 
+You can decompile gmail.exe if u have some coding experiences; it’s not even obfuscated. or you can compile the source code by yourself
 ---------------------
 ---------------------
 [WARNING] 
