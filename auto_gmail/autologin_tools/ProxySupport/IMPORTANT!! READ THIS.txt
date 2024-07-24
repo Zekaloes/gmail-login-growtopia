@@ -1,0 +1,6 @@
+Where Does The ProxyBypass.exe came from?
+u can download the proxybypass.exe source code from https://github.com/ginuerzh/gost and ITS COMPLETELY OPENSOURCE ( SAFE )
+u can download the proxybypass.exe from https://github.com/ginuerzh/gost/releases/tag/v2.11.5 and choosing gost-windows-386-2.11.5.zip
+
+so its not a virus or somethinng
+
