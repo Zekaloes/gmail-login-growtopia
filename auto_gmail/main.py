@@ -273,7 +273,7 @@ def main():
 
     random_x = random.randint(0, screen_width - width)
     random_y = random.randint(0, screen_height - height)
-    driver.set_window_position(random_x, random_y)
+    driver.set_window_position(random_x, random_y,windowHandle='current')
 
 
     try:
