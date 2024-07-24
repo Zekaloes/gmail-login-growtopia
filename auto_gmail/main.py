@@ -256,7 +256,7 @@ def main():
                                            stderr=subprocess.PIPE, shell=True)
             chrome_options.add_argument(f"--proxy-server=socks5://127.0.0.1:{local_port}")
 
-    if os.path.exists(EXTENSION_PATH):
+    if os.path.exists(os.path.abspath(EXTENSION_PATH)):
         chrome_options.add_argument(f"--load-extension={EXTENSION_PATH}")
 
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
