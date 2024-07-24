@@ -5,9 +5,9 @@ the proxysupport.exe is from https://github.com/ginuerzh/gost so its not a virus
 
 How to Use:
 
-1.Download both the folder and gmail.exe.
+1.Download both the folder from releases.
 
-2.Move both the folder and gmail.exe to your Lucifer folder.
+2.Move both the folder gmail_tools and gmail.exe to your Lucifer folder.
 
 3.Open Lucifer, go to settings, and check 'Use WebDriver'.
 
