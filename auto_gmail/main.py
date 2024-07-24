@@ -271,7 +271,6 @@ def main():
 
         driver = uc.Chrome(options=chrome_options, driver_executable_path=ChromeDriverManager().install())
 
-        time.sleep(111111111)
 
     except Exception as e:
         save_debug(e)
