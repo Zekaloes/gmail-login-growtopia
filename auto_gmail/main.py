@@ -1,3 +1,4 @@
+import ctypes
 import os
 import random
 import re
@@ -8,7 +9,6 @@ import sys
 import json
 import time
 
-import pygetwindow as gw
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -16,14 +16,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-
-
 STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
 OUTPUT_FILE = "autologin_tools/data.txt"
 PROXY_SUPPORT_PATH = "autologin_tools/ProxySupport/ProxySupport.exe"
-EXTENSION_PATH = os.path.abspath("autologin_tools/extension")
-global driver
+EXTENSION_PATH = "autologin_tools/extension"
 
 OUTPUT = {
     "status": STATUS_SUCCESS,
@@ -168,6 +165,12 @@ def wait_for_token(driver):
         OUTPUT['status'] = STATUS_FAILED
         save_output(OUTPUT)
 
+def get_screen_size():
+    user32 = ctypes.windll.user32
+    screen_width = user32.GetSystemMetrics(0)
+    screen_height = user32.GetSystemMetrics(1)
+    return screen_width, screen_height
+
 def find_available_port(start_port, end_port):
     """Find an available port within the specified range."""
     for port in range(start_port, end_port + 1):
@@ -184,18 +187,15 @@ def save_output(output):
         output_json = json.dumps(output)
         file.write(output_json)
     print(output_json)
-    driver.close()
-    cmd_process.terminate()
-    driver.quit()
 
 def main():
     global process, cmd_process
-    if len(sys.argv) < 2:
+    '''if len(sys.argv) < 2:
         sys.exit(1)
 
     json_arg = sys.argv[1]
     with open(OUTPUT_FILE, "w") as file:
-        file.write(json_arg)
+        file.write(json_arg)'''
 
     try:
         with open(OUTPUT_FILE, "r") as file:
@@ -263,22 +263,16 @@ def main():
 
     driver = uc.Chrome(options=chrome_options)
 
-    screen = gw.getWindowsWithTitle('')[0]
-    screen_width = screen.width
-    screen_height = screen.height
-
-    width = 1024
-    height = 760
-    driver.set_window_size(width, height)
-
-    random_x = random.randint(0, screen_width - width)
-    random_y = random.randint(0, screen_height - height)
-
-
     try:
         time.sleep(2)
         driver.get(url)
-        driver.set_window_position(random_x, random_y, windowHandle='current')
+
+        driver.set_window_size(800,600)
+
+        screen_width, screen_height = get_screen_size()
+        x = random.randint(0, screen_width - 800)
+        y = random.randint(0, screen_height - 600)
+        driver.set_window_position(x, y)
 
         handle_target_urls(driver)
 
@@ -307,8 +301,12 @@ def main():
         OUTPUT['status'] = STATUS_FAILED
         save_output(OUTPUT)
         driver.close()
-        cmd_process.terminate()
         driver.quit()
+
+    finally:
+        if driver:
+            driver.close()
+            driver.quit()
 
 if __name__ == "__main__":
     main()
