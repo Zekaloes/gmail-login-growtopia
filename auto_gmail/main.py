@@ -18,6 +18,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
+DEBUG_FILE = "autologin_tools/debug.txt"
 OUTPUT_FILE = "autologin_tools/data.txt"
 PROXY_SUPPORT_PATH = "autologin_tools/ProxySupport/ProxySupport.exe"
 EXTENSION_PATH = os.path.abspath("autologin_tools/extension")
@@ -188,80 +189,89 @@ def save_output(output):
         file.write(output_json)
     print(output_json)
 
+def save_debug(output):
+    """Save the debug errors to the specified file."""
+    with open(DEBUG_FILE, "w") as file:
+        file.write(output)
+
 def main():
     global process, cmd_process
-    if len(sys.argv) < 2:
-        sys.exit(1)
-
-    json_arg = sys.argv[1]
-    with open(OUTPUT_FILE, "w") as file:
-        file.write(json_arg)
-
     try:
-        with open(OUTPUT_FILE, "r") as file:
-            json_arg = file.read()
-    except FileNotFoundError:
-        pass
+        if len(sys.argv) < 2:
+            sys.exit(1)
 
-    try:
-        data = json.loads(json_arg)
-    except json.JSONDecodeError:
-        OUTPUT['status'] = STATUS_FAILED
-        OUTPUT["message"] = 'fail json'
-        save_output(OUTPUT)
-        return
+        json_arg = sys.argv[1]
+        with open(OUTPUT_FILE, "w") as file:
+            file.write(json_arg)
 
-    url = data.get("url")
-    email = data.get("mail")
-    password = data.get("pass")
-    headless = data.get("headless")
-    proxy = data.get("proxy")
+        try:
+            with open(OUTPUT_FILE, "r") as file:
+                json_arg = file.read()
+        except FileNotFoundError:
+            pass
 
-    try:
-        with open('autologin_tools/email.txt', 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                email_password = line.strip()
-                emails = email_password.split('|')[0]
-                if emails.split('@')[0] == email.split('@')[0]:
-                    email = emails
-    except Exception:
-        pass
+        try:
+            data = json.loads(json_arg)
+        except json.JSONDecodeError:
+            OUTPUT['status'] = STATUS_FAILED
+            OUTPUT["message"] = 'fail json'
+            save_output(OUTPUT)
+            return
 
-    try:
-        with open('autologin_tools/bypass.txt', 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                proxy_details = line.strip()
-                proxys = proxy_details.split('@')
-                if proxy in proxy_details:
-                    proxy = proxys[1]
-    except Exception:
-        pass
+        url = data.get("url")
+        email = data.get("mail")
+        password = data.get("pass")
+        headless = data.get("headless")
+        proxy = data.get("proxy")
 
-    chrome_options = uc.ChromeOptions()
-    if headless:
-        chrome_options.add_argument("--headless")
+        try:
+            with open('autologin_tools/email.txt', 'r') as file:
+                lines = file.readlines()
+                for line in lines:
+                    email_password = line.strip()
+                    emails = email_password.split('|')[0]
+                    if emails.split('@')[0] == email.split('@')[0]:
+                        email = emails
+        except Exception:
+            pass
 
-    if proxy:
-        proxy_parts = proxy.split(':')
-        if len(proxy_parts) == 2:
-            chrome_options.add_argument(f"--proxy-server=socks5://{proxy}")
-        elif len(proxy_parts) == 4:
-            proxy_path = os.path.abspath(PROXY_SUPPORT_PATH)
-            local_port = find_available_port(8001, 65535)
-            command = fr'{proxy_path} -L socks5://:{local_port} -F socks5://{proxy_parts[2]}:{proxy_parts[3]}@{proxy_parts[0]}:{proxy_parts[1]}'
+        try:
+            with open('autologin_tools/bypass.txt', 'r') as file:
+                lines = file.readlines()
+                for line in lines:
+                    proxy_details = line.strip()
+                    proxys = proxy_details.split('@')
+                    if proxy in proxy_details:
+                        proxy = proxys[1]
+        except Exception:
+            pass
 
-            cmd_process = subprocess.Popen(f'cmd /c {command}', stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE, shell=True)
-            chrome_options.add_argument(f"--proxy-server=socks5://127.0.0.1:{local_port}")
+        chrome_options = uc.ChromeOptions()
+        if headless:
+            chrome_options.add_argument("--headless")
 
-    if os.path.exists(EXTENSION_PATH):
-        chrome_options.add_argument(f"--load-extension={EXTENSION_PATH}")
+        if proxy:
+            proxy_parts = proxy.split(':')
+            if len(proxy_parts) == 2:
+                chrome_options.add_argument(f"--proxy-server=socks5://{proxy}")
+            elif len(proxy_parts) == 4:
+                proxy_path = os.path.abspath(PROXY_SUPPORT_PATH)
+                local_port = find_available_port(8001, 65535)
+                command = fr'{proxy_path} -L socks5://:{local_port} -F socks5://{proxy_parts[2]}:{proxy_parts[3]}@{proxy_parts[0]}:{proxy_parts[1]}'
 
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+                cmd_process = subprocess.Popen(f'cmd /c {command}', stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE, shell=True)
+                chrome_options.add_argument(f"--proxy-server=socks5://127.0.0.1:{local_port}")
 
-    driver = uc.Chrome(options=chrome_options)
+        if os.path.exists(EXTENSION_PATH):
+            chrome_options.add_argument(f"--load-extension={EXTENSION_PATH}")
+
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+
+        driver = uc.Chrome(options=chrome_options)
+
+    except Exception as e:
+        save_debug(e)
 
     try:
         time.sleep(2)
@@ -298,6 +308,7 @@ def main():
         handle_target_urls(driver)
 
     except Exception as e:
+        save_debug(e)
         OUTPUT['status'] = STATUS_FAILED
         save_output(OUTPUT)
         driver.close()
