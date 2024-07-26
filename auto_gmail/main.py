@@ -1,4 +1,6 @@
+import base64
 import ctypes
+import io
 import os
 import random
 import re
@@ -8,6 +10,7 @@ import subprocess
 import sys
 import json
 import time
+from PIL import Image
 import psutil
 
 import undetected_chromedriver as uc
@@ -32,37 +35,63 @@ OUTPUT = {
 }
 
 TARGET_URLS = [
-    'accounts.google.com/v3/signin/challenge/recaptcha',
-    'accounts.google.com/v3/signin/challenge/pwd',
-    'accounts.google.com/signin/oauth/id?authuser',
-    'login.growtopiagame.com/player/growid/logon-name'
-    'accounts.google.com/v3/signin/identifier'
+    ['https://accounts.google.com/v3/signin/challenge/recaptcha', 2],
+    ['https://accounts.google.com/v3/signin/challenge/pwd', 2],
+    ['https://accounts.google.com/signin/oauth/id?authuser', 3],
+    ['https://login.growtopiagame.com/player/growid/logon-name', 3],
+    ['https://accounts.google.com/v3/signin/identifier', 1],
+    ['https://accounts.google.com/speedbump', 3],
 ]
 
 
-def has_target_url_changed(driver):
+def find_available_port(start_port, end_port):
+    """Find an available port within the specified range."""
+    for port in range(start_port, end_port + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)
+            result = s.connect_ex(('localhost', port))
+            if result != 0:
+                return port
+    raise Exception("No available ports found in the given range")
+
+
+def get_screen_size():
+    user32 = ctypes.windll.user32
+    screen_width = user32.GetSystemMetrics(0)
+    screen_height = user32.GetSystemMetrics(1)
+    return screen_width, screen_height
+
+
+def save_output(output):
+    """Save the output to the specified file."""
+    with open(OUTPUT_FILE, "w") as file:
+        output_json = json.dumps(output)
+        file.write(output_json)
+
+    print(output_json)
+
+    if driver:
+        try:
+            driver.close()
+            driver.quit()
+
+            sys.exit(1)
+        except Exception:
+            pass
+
+
+def save_debug(output):
+    """Save the debug errors to the specified file."""
+    with open(DEBUG_FILE, "w") as file:
+        file.write(str(output))
+
+
+def has_target_url_changed(driver,expected_condition):
     """Check if the current URL of the driver matches any of the target URLs."""
     for url in TARGET_URLS:
-        if url in driver.current_url:
+        if url[0] in driver.current_url and url[1] == expected_condition:
             return True
     return False
-
-
-def generate_username(length=8):
-    vowels = "aeiou"
-    consonants = "".join(set(string.ascii_lowercase) - set(vowels))
-
-    first_char = random.choice(string.ascii_uppercase)
-    remaining_chars = []
-    for i in range(length - 1):
-        if i % 2 == 0:
-            remaining_chars.append(random.choice(consonants))
-        else:
-            remaining_chars.append(random.choice(vowels))
-
-    username = first_char + ''.join(remaining_chars)
-    return username
-
 
 def solve_captcha(driver):
     """Handle reCAPTCHA challenges if present in the current URL."""
@@ -88,85 +117,20 @@ def solve_captcha(driver):
     except Exception as e:
         pass
 
+def generate_username(length=8):
+    vowels = "aeiou"
+    consonants = "".join(set(string.ascii_lowercase) - set(vowels))
 
-def handle_target_urls(driver):
-    """Handle different target URLs and perform respective actions.""" #/html/body/div/div/div
-    try:
-        text = WebDriverWait(driver,3).until(
-            EC.presence_of_element_located(
-                (By.XPATH,'/html/body/div/div/div'))
-        )
-        if 'Oops, too many people trying to login at once. Please try again in 30 sec.' in text.text:
-            driver.refresh()
-            time.sleep(2)
-            handle_target_urls(driver)
-    except Exception:
-        pass
+    first_char = random.choice(string.ascii_uppercase)
+    remaining_chars = []
+    for i in range(length - 1):
+        if i % 2 == 0:
+            remaining_chars.append(random.choice(consonants))
+        else:
+            remaining_chars.append(random.choice(vowels))
 
-    if 'accounts.google.com/signin/oauth/id?authuser' in driver.current_url:
-        WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="yDmH0d"]/c-wiz/div/div[3]/div/div/div[2]/div/div/button/span'))
-        ).click()
-    elif 'accounts.google.com/speedbump' in driver.current_url:
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.XPATH, '//*[@id="confirm"]'))
-        ).click()
-        try:
-            WebDriverWait(driver, 10).until(has_target_url_changed)
-        except Exception:
-            pass
-
-        time.sleep(8)
-    elif 'accounts.google.com/v3/signin/challenge/recaptcha' in driver.current_url:
-        solve_captcha(driver)
-        time.sleep(5)
-    elif 'https://login.growtopiagame.com/player/growid/logon-name' in driver.current_url:
-        time.sleep(4)
-        try:
-            if not ('Choose your name in Growtopia' in driver.page_source):
-                token_pattern = r'"token":"(.*?)"'
-                match = re.search(token_pattern, driver.page_source)
-                if match:
-                    token = match.group(1)
-                    OUTPUT['token'] = token
-                    save_output(OUTPUT)
-                else:
-                    OUTPUT['status'] = STATUS_FAILED
-                    save_output(OUTPUT)
-            else:
-                generate_and_enter_username(driver)
-                wait_for_token(driver)
-        except Exception as e:
-            generate_and_enter_username(driver)
-            wait_for_token(driver)
-    else:
-
-        retry_page_loading(driver)
-
-
-def retry_page_loading(driver):
-    """Retry loading the page if certain conditions are met."""
-    tries = 10
-    while tries > 0:
-        tries -= 1
-        try:
-            response_element = WebDriverWait(driver, 4).until(
-                EC.presence_of_element_located((By.XPATH, "/html/body/center/h1"))
-            )
-            response_text = response_element.text
-            if '502' in response_text:
-                driver.refresh()
-            else:
-                if 'login.growtopiagame.com/player/growid/logon-name' in driver.current_url:
-                    handle_target_urls(driver)
-                return
-        except Exception as e:
-            if 'login.growtopiagame.com/player/growid/logon-name' in driver.current_url:
-                handle_target_urls(driver)
-            return
-
+    username = first_char + ''.join(remaining_chars)
+    return username
 
 def generate_and_enter_username(driver):
     """Generate a new username and enter it in the login form."""
@@ -190,7 +154,6 @@ def generate_and_enter_username(driver):
 
         if not found_message:
             break
-
 
 def wait_for_token(driver):
     """Wait for the token to be available in the page source."""
@@ -217,41 +180,67 @@ def wait_for_token(driver):
         OUTPUT['status'] = STATUS_FAILED
         save_output(OUTPUT)
 
+def handle_target_urls(driver):
+    """Handle different target URLs and perform respective actions."""
+    try:
+        text = WebDriverWait(driver,3).until(
+            EC.presence_of_element_located(
+                (By.XPATH,'/html/body/div/div/div'))
+        )
+        if 'Oops, too many people trying to login at once. Please try again in 30 sec.' in text.text:
+            driver.refresh()
+            time.sleep(5)
+            handle_target_urls(driver)
+    except Exception:
+        pass
 
-def get_screen_size():
-    user32 = ctypes.windll.user32
-    screen_width = user32.GetSystemMetrics(0)
-    screen_height = user32.GetSystemMetrics(1)
-    return screen_width, screen_height
+    if 'https://accounts.google.com/signin/oauth/id?authuser' in driver.current_url:
+        WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="yDmH0d"]/c-wiz/div/div[3]/div/div/div[2]/div/div/button/span'))
+        ).click()
+    elif 'https://accounts.google.com/speedbump' in driver.current_url:
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="confirm"]'))
+        ).click()
+        try:
+            WebDriverWait(driver, 10).until(lambda d: has_target_url_changed(d, expected_condition=3))
+        except Exception as e:
+            pass
+        handle_target_urls(driver)
+    elif 'accounts.google.com/v3/signin/challenge/recaptcha' in driver.current_url:
+        solve_captcha(driver)
+        time.sleep(5)
+        handle_target_urls(driver)
+    elif 'https://login.growtopiagame.com/player/growid/logon-name' in driver.current_url:
+        time.sleep(4)
+        try:
+            if not ('Choose your name in Growtopia' in driver.page_source):
+                token_pattern = r'"token":"(.*?)"'
+                match = re.search(token_pattern, driver.page_source)
+                if match:
+                    token = match.group(1)
+                    OUTPUT['token'] = token
+                    save_output(OUTPUT)
+                else:
+                    OUTPUT['status'] = STATUS_FAILED
+                    save_output(OUTPUT)
+            else:
+                generate_and_enter_username(driver)
+                wait_for_token(driver)
+        except Exception as e:
+            generate_and_enter_username(driver)
+            wait_for_token(driver)
 
-
-def find_available_port(start_port, end_port):
-    """Find an available port within the specified range."""
-    for port in range(start_port, end_port + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1)
-            result = s.connect_ex(('localhost', port))
-            if result != 0:
-                return port
-    raise Exception("No available ports found in the given range")
-
-
-def save_output(output):
-    """Save the output to the specified file."""
-    with open(OUTPUT_FILE, "w") as file:
-        output_json = json.dumps(output)
-        file.write(output_json)
-    print(output_json)
-
-
-def save_debug(output):
-    """Save the debug errors to the specified file."""
-    with open(DEBUG_FILE, "w") as file:
-        file.write(str(output))
+def get_captcha_src(driver):
+    captcha_img = driver.find_element(By.ID, 'captchaimg')
+    src = driver.execute_script("return arguments[0].src;", captcha_img)
+    return src if src else None
 
 
 def main():
-    global process, cmd_process
+    global process, cmd_process, driver
     try:
         if len(sys.argv) < 2:
             sys.exit(1)
@@ -332,28 +321,29 @@ def main():
         y = random.randint(0, screen_height - 600)
         driver.set_window_position(x, y)
 
-        pid = driver.service.process.pid
-        p = psutil.Process(pid)
-        p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
-        p.cpu_affinity([0])
-
-    except Exception as e:
-        save_debug(e)
-        sys.exit(1)
-
-    try:
-        time.sleep(2)
         driver.get(url)
 
-        handle_target_urls(driver)
+        try:
+            WebDriverWait(driver, 10).until(lambda d: has_target_url_changed(d, expected_condition=1))
+        except Exception as e:
+            pass
 
+        handle_target_urls(driver)
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.ID, "identifierId"))
         ).send_keys(email + Keys.ENTER)
 
+        '''try:
+            captcha_img = WebDriverWait(driver, 4).until(
+                lambda d: get_captcha_src(driver)
+            )
+            print(captcha_img)
+        except Exception as e:
+            pass'''
+
         try:
-            WebDriverWait(driver, 10).until(has_target_url_changed())
-        except Exception:
+            WebDriverWait(driver, 10).until(lambda d: has_target_url_changed(d, expected_condition=2))
+        except Exception as e:
             pass
 
         handle_target_urls(driver)
@@ -362,8 +352,8 @@ def main():
         ).send_keys(password + Keys.ENTER)
 
         try:
-            WebDriverWait(driver, 10).until(has_target_url_changed)
-        except Exception:
+            WebDriverWait(driver, 10).until(lambda d: has_target_url_changed(d, expected_condition=3))
+        except Exception as e:
             pass
 
         handle_target_urls(driver)
@@ -377,7 +367,7 @@ def main():
                 driver.close()
                 driver.quit()
         except Exception as e:
-            save_debug()
+            save_debug(e)
 
     finally:
         try:
@@ -385,8 +375,7 @@ def main():
                 driver.close()
                 driver.quit()
         except Exception as e:
-            save_debug()
+            save_debug(e)
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
