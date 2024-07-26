@@ -239,9 +239,17 @@ def get_captcha_src(driver):
     return src if src else None
 
 
+def is_chrome_running():
+    """Check if any chrome.exe process is running."""
+    for process in psutil.process_iter(['name']):
+        if process.info['name'] == 'chrome.exe':
+            return True
+    return False
+
 def main():
     global process, cmd_process, driver
     try:
+
         if len(sys.argv) < 2:
             sys.exit(1)
 
@@ -363,19 +371,17 @@ def main():
         OUTPUT['status'] = STATUS_FAILED
         save_output(OUTPUT)
         try:
-            if driver:
-                driver.close()
-                driver.quit()
+            driver.close()
+            driver.quit()
         except Exception as e:
-            save_debug(e)
+            pass
 
     finally:
         try:
-            if driver:
-                driver.close()
-                driver.quit()
+            driver.close()
+            driver.quit()
         except Exception as e:
-            save_debug(e)
+            pass
 
 if __name__ == '__main__':
     main()
