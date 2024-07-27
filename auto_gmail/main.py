@@ -1,5 +1,8 @@
 import base64
 import ctypes
+import inspect
+from datetime import datetime
+
 import io
 import os
 import random
@@ -10,6 +13,8 @@ import subprocess
 import sys
 import json
 import time
+
+import requests
 from PIL import Image
 import psutil
 
@@ -25,6 +30,7 @@ STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
 DEBUG_FILE = "autologin_tools/debug.txt"
 OUTPUT_FILE = "autologin_tools/data.txt"
+CONFIG_FILE = "autologin_tools/config.json"
 PROXY_SUPPORT_PATH = "autologin_tools/ProxySupport/ProxySupport.exe"
 EXTENSION_PATH = os.path.abspath("autologin_tools/extension")
 
@@ -70,20 +76,26 @@ def save_output(output):
 
     print(output_json)
 
-    if driver:
-        try:
-            driver.close()
-            driver.quit()
+    try:
+        driver.close()
+        driver.quit()
 
-            sys.exit(1)
-        except Exception:
-            pass
+        sys.exit(1)
+    except Exception:
+        pass
 
 
 def save_debug(output):
-    """Save the debug errors to the specified file."""
-    with open(DEBUG_FILE, "w") as file:
-        file.write(str(output))
+    """Append the debug errors to the specified file with a timestamp and caller line number."""
+    current_time = datetime.now().strftime("%m/%d/%Y/%H:%M")
+
+    frame = inspect.currentframe()
+    caller_frame = inspect.getouterframes(frame)[1]
+
+    line_number = caller_frame.lineno
+
+    with open(DEBUG_FILE, "a") as file:
+        file.write(f"{current_time} (Line {line_number})\n{output}\n\n")
 
 
 def has_target_url_changed(driver,expected_condition):
@@ -111,10 +123,13 @@ def solve_captcha(driver):
                 else:
                     time.sleep(1)
     except TimeoutException as e:
+        save_debug(e)
         pass
     except NoSuchElementException as e:
+        save_debug(e)
         pass
     except Exception as e:
+        save_debug(e)
         pass
 
 def generate_username(length=8):
@@ -246,10 +261,74 @@ def is_chrome_running():
             return True
     return False
 
+
+def solve_textcaptcha(api_key, image_path):
+    """" Solving Text Captcha """
+    def encode_image_to_base64(image_path):
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+
+    encoded_image = encode_image_to_base64(image_path)
+
+    create_task_url = "https://api.capmonster.cloud/createTask"
+    task_payload = {
+        "clientKey": api_key,
+        "task": {
+            "type": "ImageToTextTask",
+            "body": encoded_image
+        }
+    }
+
+    response = requests.post(create_task_url, json=task_payload)
+    task_id = response.json().get("taskId")
+
+    if not task_id:
+        return response.json()
+
+    get_task_result_url = "https://api.capmonster.cloud/getTaskResult"
+    result_payload = {
+        "clientKey": api_key,
+        "taskId": task_id
+    }
+
+    while True:
+        result_response = requests.post(get_task_result_url, json=result_payload)
+        result_data = result_response.json()
+
+        if result_data.get("status") == "ready":
+            return result_data["solution"]["text"]
+        elif result_data.get("status") == "processing":
+            time.sleep(2)
+        else:
+            return result_data
+
+
+
+def get_api_key():
+    """" Getting api key from config.json """
+    try:
+        # Open and read the JSON configuration file
+        with open(CONFIG_FILE, 'r') as file:
+            config_data = json.load(file)
+
+        # Extract and return the API key
+        api_key = config_data.get("captcha_solver_apikey")
+        if api_key:
+            return api_key
+        else:
+            raise KeyError("API key not found in the configuration file.")
+
+    except FileNotFoundError as e:
+        save_debug(e)
+    except json.JSONDecodeError as e:
+        save_debug(e)
+    except KeyError as e:
+        save_debug(e)
+        raise e
+
 def main():
     global process, cmd_process, driver
     try:
-
         if len(sys.argv) < 2:
             sys.exit(1)
 
@@ -276,6 +355,7 @@ def main():
         password = data.get("pass")
         headless = data.get("headless")
         proxy = data.get("proxy")
+        api_key = get_api_key()
 
         try:
             with open('autologin_tools/email.txt', 'r') as file:
@@ -329,6 +409,17 @@ def main():
         y = random.randint(0, screen_height - 600)
         driver.set_window_position(x, y)
 
+    except Exception as e:
+        save_debug(e)
+        OUTPUT['status'] = STATUS_FAILED
+        save_output(OUTPUT)
+        try:
+            driver.close()
+            driver.quit()
+        except Exception as e:
+            pass
+
+    try:
         driver.get(url)
 
         try:
@@ -341,13 +432,24 @@ def main():
             EC.presence_of_element_located((By.ID, "identifierId"))
         ).send_keys(email + Keys.ENTER)
 
-        '''try:
+        try:
             captcha_img = WebDriverWait(driver, 4).until(
                 lambda d: get_captcha_src(driver)
             )
-            print(captcha_img)
+            if len(api_key) > 0:
+                response = requests.get(captcha_img)
+                response.raise_for_status()
+
+                image_base64 = base64.b64encode(response.content).decode('utf-8')
+                code = solve_textcaptcha(api_key, image_base64)
+                WebDriverWait(driver,20).until(
+                    EC.presence_of_element_located((By.XPATH, '//*[@id="ca"]'))
+                ).send_keys(code + Keys.ENTER)
+            else:
+                time.sleep(30)
+                save_debug('U dont have api key')
         except Exception as e:
-            pass'''
+            pass
 
         try:
             WebDriverWait(driver, 10).until(lambda d: has_target_url_changed(d, expected_condition=2))
